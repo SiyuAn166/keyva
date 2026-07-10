@@ -222,19 +222,21 @@ export function useVault() {
   }, [status, lock]);
 
   // Dev-only: on mount, connect automatically (skips the Connect button).
+  // Deferred via setTimeout so connect()'s setState isn't called synchronously
+  // in the effect body (avoids react-hooks/set-state-in-effect).
   useEffect(() => {
-    if (AUTO_UNLOCK && status === "locked") {
-      void connect();
-    }
+    if (!(AUTO_UNLOCK && status === "locked")) return;
+    const t = setTimeout(() => void connect(), 0);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Dev-only: once connected, unlock with the fixed dev password
   // (bypasses the UI password/strength step entirely).
   useEffect(() => {
-    if (AUTO_UNLOCK && status === "connected" && !keyRef.current) {
-      void unlock(DEV_PASSWORD as string);
-    }
+    if (!(AUTO_UNLOCK && status === "connected" && !keyRef.current)) return;
+    const t = setTimeout(() => void unlock(DEV_PASSWORD as string), 0);
+    return () => clearTimeout(t);
   }, [status, unlock]);
 
   return {

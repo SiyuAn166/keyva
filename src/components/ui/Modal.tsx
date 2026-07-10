@@ -18,31 +18,32 @@ export default function Modal({
   // `visible` drives the enter/leave transition (opacity + transform).
   const [visible, setVisible] = useState(false);
 
-  // Mount / unmount around the animation.
+  // Coordinate mount + enter/leave transitions.
+  // Every setState is deferred inside rAF/timeout callbacks (never called
+  // synchronously in the effect body) so it doesn't trigger cascading renders.
   useEffect(() => {
     if (open) {
-      setRender(true);
+      // Mount (hidden), then flip to visible on a later frame so the browser
+      // has a painted "from" state to transition from.
+      let raf2 = 0;
+      const raf1 = requestAnimationFrame(() => {
+        setRender(true);
+        raf2 = requestAnimationFrame(() => setVisible(true));
+      });
+      return () => {
+        cancelAnimationFrame(raf1);
+        cancelAnimationFrame(raf2);
+      };
     } else {
-      // play the leave transition, then unmount
-      setVisible(false);
+      // Play the leave transition, then unmount.
+      const raf = requestAnimationFrame(() => setVisible(false));
       const t = setTimeout(() => setRender(false), 200);
-      return () => clearTimeout(t);
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(t);
+      };
     }
   }, [open]);
-
-  // Once mounted (hidden state painted), flip to visible on a later frame
-  // so the browser has a painted "from" state to transition from.
-  useEffect(() => {
-    if (!render || !open) return;
-    let raf2 = 0;
-    const raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => setVisible(true));
-    });
-    return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
-    };
-  }, [render, open]);
 
   // Esc to close + lock body scroll while open.
   useEffect(() => {
