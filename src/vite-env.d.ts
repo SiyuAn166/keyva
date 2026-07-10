@@ -2,6 +2,8 @@
 
 interface ImportMetaEnv {
   readonly VITE_GOOGLE_CLIENT_ID: string;
+  readonly VITE_MOCK_DRIVE?: string;
+  readonly VITE_MOCK_PASSWORD?: string;
 }
 interface ImportMeta {
   readonly env: ImportMetaEnv;

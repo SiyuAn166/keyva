@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Item } from "../lib/types";
-import { initTokenClient, requestToken, getToken } from "../lib/drive/auth";
 import {
-  getFolderId,
-  findVaultId,
-  loadVault,
-  saveVault,
-} from "../lib/drive/vaultFile";
+  initTokenClient,
+  requestToken,
+  getToken as realGetToken,
+} from "../lib/drive/auth";
+import * as realDrive from "../lib/drive/vaultFile";
+import * as mockDrive from "../lib/drive/mockDrive";
 import {
   deriveKey,
   encryptVault,
@@ -15,6 +15,18 @@ import {
   newSalt,
   CURRENT_VERSION,
 } from "../lib/crypto";
+
+// Dev-only: skip Google OAuth and store the encrypted blob in localStorage.
+// Set VITE_MOCK_DRIVE=true in .env.development (NOT .env, or it leaks to prod).
+const MOCK = import.meta.env.VITE_MOCK_DRIVE === "true";
+const drive = MOCK ? mockDrive : realDrive;
+const getToken = MOCK ? () => "mock-token" : realGetToken;
+
+// Dev-only: auto-connect + auto-unlock with a fixed password so you never
+// click Connect or type the master password. Set VITE_MOCK_PASSWORD in
+// .env.development. Only active alongside MOCK; never runs in production.
+const DEV_PASSWORD = import.meta.env.VITE_MOCK_PASSWORD;
+const AUTO_UNLOCK = MOCK && !!DEV_PASSWORD;
 
 type Status = "locked" | "connecting" | "connected" | "unlocked";
 
@@ -38,8 +50,8 @@ export function useVault() {
     keyRef.current = null;
     saltRef.current = null;
     setItems([]);
-    // A vault now exists iff it has been saved to Drive (fileRef set). This
-    // keeps the unlock screen from wrongly re-showing "Create your vault".
+    // A vault now exists iff it has been saved (fileRef set). This keeps the
+    // unlock screen from wrongly re-showing "Create your vault".
     setIsNewVault(!fileRef.current);
     setStatus("connected");
   }, []);
@@ -47,6 +59,23 @@ export function useVault() {
   const connect = useCallback(async () => {
     setError(null);
     setStatus("connecting");
+
+    // Mock mode: no OAuth. Jump straight to the unlock screen and probe the
+    // local (localStorage) vault to decide create-vs-open.
+    if (MOCK) {
+      setStatus("connected");
+      try {
+        const folderId = await drive.getFolderId("mock-token");
+        folderRef.current = folderId;
+        const fileId = await drive.findVaultId("mock-token", folderId);
+        fileRef.current = fileId;
+        setIsNewVault(!fileId);
+      } catch {
+        setIsNewVault(true);
+      }
+      return;
+    }
+
     await initTokenClient((token, err) => {
       if (err || !token) {
         setError(err || "No token");
@@ -58,9 +87,9 @@ export function useVault() {
       // whether it is CREATING (enforce strength) or RETURNING (just open).
       (async () => {
         try {
-          const folderId = await getFolderId(token);
+          const folderId = await drive.getFolderId(token);
           folderRef.current = folderId;
-          const fileId = await findVaultId(token, folderId);
+          const fileId = await drive.findVaultId(token, folderId);
           fileRef.current = fileId;
           setIsNewVault(!fileId);
         } catch {
@@ -80,12 +109,13 @@ export function useVault() {
     }
     setBusy(true);
     try {
-      const folderId = folderRef.current ?? (await getFolderId(token));
+      const folderId = folderRef.current ?? (await drive.getFolderId(token));
       folderRef.current = folderId;
-      const fileId = fileRef.current ?? (await findVaultId(token, folderId));
+      const fileId =
+        fileRef.current ?? (await drive.findVaultId(token, folderId));
       fileRef.current = fileId;
       if (fileId) {
-        const packed = await loadVault(token, fileId);
+        const packed = await drive.loadVault(token, fileId);
         const { version, salt, iv, ct } = unpack(packed);
         const key = await deriveKey(password, salt, version);
         const data = await decryptVault(key, iv, ct); // throws on wrong password
@@ -99,12 +129,10 @@ export function useVault() {
         keyRef.current = key;
         saltRef.current = salt;
         versionRef.current = CURRENT_VERSION;
-        // Immediately persist an empty vault to Drive so the vault "exists"
-        // even before any item is added. This records that the master
-        // password has been set, so locking returns to the unlock screen
-        // (not "Create your vault").
+        // Immediately persist an empty vault so the vault "exists" even before
+        // any item is added (records that the master password has been set).
         const bytes = await encryptVault(key, salt, [], CURRENT_VERSION);
-        fileRef.current = await saveVault(
+        fileRef.current = await drive.saveVault(
           token,
           folderId,
           fileRef.current,
@@ -134,7 +162,7 @@ export function useVault() {
         next,
         versionRef.current,
       );
-      fileRef.current = await saveVault(
+      fileRef.current = await drive.saveVault(
         token,
         folderRef.current,
         fileRef.current,
@@ -192,6 +220,22 @@ export function useVault() {
       events.forEach((e) => window.removeEventListener(e, reset, true));
     };
   }, [status, lock]);
+
+  // Dev-only: on mount, connect automatically (skips the Connect button).
+  useEffect(() => {
+    if (AUTO_UNLOCK && status === "locked") {
+      void connect();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Dev-only: once connected, unlock with the fixed dev password
+  // (bypasses the UI password/strength step entirely).
+  useEffect(() => {
+    if (AUTO_UNLOCK && status === "connected" && !keyRef.current) {
+      void unlock(DEV_PASSWORD as string);
+    }
+  }, [status, unlock]);
 
   return {
     status,

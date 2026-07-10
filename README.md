@@ -6,29 +6,29 @@ Store both **login credentials** (username / password / security questions) and 
 
 ## How it works
 
-* **Encryption is local.** Your master password is turned into an AES-256 key using **Argon2id** (a slow, memory-hard key-derivation function). The vault is encrypted with **AES-256-GCM** in the browser.
-* **Only ciphertext is stored.** The encrypted blob (`keyva/vault.bin`) lives in your Google Drive. Drive, GitHub Pages, and anyone reading the public code only ever see an unreadable encrypted file.
-* **Your master password is never stored** — not in the code, not in the file, not on Drive. It exists only in your head and is typed fresh each time. Lose it and the data is unrecoverable (that is the point).
-* **Least-privilege Drive access.** The app uses the `drive.file` scope, so it can only see files it created itself — never the rest of your Drive.
+- **Encryption is local.** Your master password is turned into an AES-256 key using **Argon2id** (a slow, memory-hard key-derivation function). The vault is encrypted with **AES-256-GCM** in the browser.
+- **Only ciphertext is stored.** The encrypted blob (`keyva/vault.bin`) lives in your Google Drive. Drive, GitHub Pages, and anyone reading the public code only ever see an unreadable encrypted file.
+- **Your master password is never stored** — not in the code, not in the file, not on Drive. It exists only in your head and is typed fresh each time. Lose it and the data is unrecoverable (that is the point).
+- **Least-privilege Drive access.** The app uses the `drive.file` scope, so it can only see files it created itself — never the rest of your Drive.
 
 ## Security features
 
-* **Argon2id key derivation** (64 MB memory, 3 passes) via `hash-wasm` — makes offline brute-force attacks slow and memory-hard, crippling GPU/ASIC parallelism.
-* **AES-256-GCM authenticated encryption** — both encrypts the data and detects any tampering with the file.
-* **Master-password strength gate** — `zxcvbn` runs on vault creation and refuses weak passwords (minimum length 8 and score "Good" or better).
-* **Strict Content-Security-Policy** — injected into the production build; blocks injected/remote scripts, allowing only self, Google auth/API origins, and WASM.
-* **Auto-lock** — the in-memory key is wiped after 5 minutes of inactivity.
-* **No third-party scripts, no CDNs** — native Web Crypto plus two audited WASM/JS dependencies only.
+- **Argon2id key derivation** (64 MB memory, 3 passes) via `hash-wasm` — makes offline brute-force attacks slow and memory-hard, crippling GPU/ASIC parallelism.
+- **AES-256-GCM authenticated encryption** — both encrypts the data and detects any tampering with the file.
+- **Master-password strength gate** — `zxcvbn` runs on vault creation and refuses weak passwords (minimum length 8 and score "Good" or better).
+- **Strict Content-Security-Policy** — injected into the production build; blocks injected/remote scripts, allowing only self, Google auth/API origins, and WASM.
+- **Auto-lock** — the in-memory key is wiped after 5 minutes of inactivity.
+- **No third-party scripts, no CDNs** — native Web Crypto plus two audited WASM/JS dependencies only.
 
 > The entire security of Keyva rests on one thing you control: **pick a strong, unique master passphrase (4–5 unrelated words) and never reuse it.** With a strong passphrase, someone holding both the public code and your `vault.bin` still gets nothing.
 
 ## Tech stack
 
-* React + TypeScript + Vite
-* Tailwind CSS v4 (`@tailwindcss/vite`)
-* Web Crypto API (AES-256-GCM)
-* `hash-wasm` (Argon2id) · `zxcvbn` (password strength)
-* Google Identity Services (GIS) + Google Drive REST API
+- React + TypeScript + Vite
+- Tailwind CSS v4 (`@tailwindcss/vite`)
+- Web Crypto API (AES-256-GCM)
+- `hash-wasm` (Argon2id) · `zxcvbn` (password strength)
+- Google Identity Services (GIS) + Google Drive REST API
 
 ## Storage format — `keyva/vault.bin`
 
@@ -41,10 +41,10 @@ A single packed binary blob (not JSON):
 └─────────┴──────────────┴────────────┴─────────────────────────┘
 ```
 
-* **version** (1 byte) — `1` = legacy PBKDF2, `2` = Argon2id (current).
-* **salt** (16 bytes) — random per vault, feeds the KDF. Stored in the clear (salt is not secret).
-* **iv** (12 bytes) — random per save, the AES-GCM nonce. Also in the clear.
-* **ciphertext** — AES-256-GCM encryption of `JSON.stringify(items)`, with the GCM auth tag appended.
+- **version** (1 byte) — `1` = legacy PBKDF2, `2` = Argon2id (current).
+- **salt** (16 bytes) — random per vault, feeds the KDF. Stored in the clear (salt is not secret).
+- **iv** (12 bytes) — random per save, the AES-GCM nonce. Also in the clear.
+- **ciphertext** — AES-256-GCM encryption of `JSON.stringify(items)`, with the GCM auth tag appended.
 
 Everything except the salt and IV is encrypted; there is no readable structure in the body.
 
@@ -93,8 +93,8 @@ npm install
 3. **APIs & Services → OAuth consent screen** → choose **Audience** → add your Google email under **Test users**. Leave the app in **Testing** mode (only listed test users can connect — this keeps the app private to you).
 4. **APIs & Services → Credentials → Create Credentials → OAuth client ID** → type **Web application**.
 5. Under **Authorized JavaScript origins**, add:
-   * `http://localhost:5173` (local dev)
-   * your deployed URL, e.g. `https://<your-username>.github.io` (production)
+   - `http://localhost:5173` (local dev)
+   - your deployed URL, e.g. `https://<your-username>.github.io` (production)
 6. Copy the **Client ID** (ends in `.apps.googleusercontent.com`).
 
 You do **not** need a client secret, API key, or billing — the browser OAuth flow uses none of them. The client ID is not a secret and is safe to expose in browser code.
@@ -142,13 +142,13 @@ npm run preview   # preview the production build locally
 No. Each visitor logs in with their own Google account and only ever connects to their own Drive. Google mints the access token for whoever is signed in — a stranger's session touches only their own files, never yours. With the app in Testing mode, strangers are rejected at the connect step entirely.
 
 **What if someone gets my `vault.bin` and the public `crypto.ts`?**
-They still can't read it. The code is the *recipe*, not the *key*. The only path is to guess your master password offline — and Argon2id (slow, memory-hard) plus a strong passphrase makes that infeasible (centuries of compute). This is Kerckhoffs's principle: security lives in the key, never in hiding the code.
+They still can't read it. The code is the _recipe_, not the _key_. The only path is to guess your master password offline — and Argon2id (slow, memory-hard) plus a strong passphrase makes that infeasible (centuries of compute). This is Kerckhoffs's principle: security lives in the key, never in hiding the code.
 
 **What actually protects me?**
 Two independent layers: (1) your Google login + 2FA gates who can even download the file, and (2) your master password encrypts the contents if the file ever leaks. The one condition that matters: **use a strong, unique master passphrase.**
 
 ## Notes
 
-* **Legacy vaults.** A vault created before the Argon2id upgrade is version `1` (PBKDF2) and still opens; edits re-save as `v1`. To move to Argon2id, delete `keyva/vault.bin` in Drive and create a fresh vault.
-* **Auto-lock.** The vault locks after 5 minutes of inactivity; you'll need to re-enter your master password.
-* **Backup.** Since the whole file is encrypted, you can safely download `keyva/vault.bin` from Drive as an extra backup.
+- **Legacy vaults.** A vault created before the Argon2id upgrade is version `1` (PBKDF2) and still opens; edits re-save as `v1`. To move to Argon2id, delete `keyva/vault.bin` in Drive and create a fresh vault.
+- **Auto-lock.** The vault locks after 5 minutes of inactivity; you'll need to re-enter your master password.
+- **Backup.** Since the whole file is encrypted, you can safely download `keyva/vault.bin` from Drive as an extra backup.
