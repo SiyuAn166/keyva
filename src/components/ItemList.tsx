@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Item, ItemType } from "../lib/types";
 import Button from "./ui/Button";
-import { Eye, EyeOff, Search, Trash } from "./ui/icons";
+import { Eye, EyeOff, Pencil, Search, Trash } from "./ui/icons";
 
 type Filter = "all" | ItemType;
 
@@ -141,7 +141,7 @@ export default function ItemList({
                       size="xs"
                       onClick={() => onEdit(item)}
                     >
-                      Edit
+                      <Pencil width={16} height={16} />
                     </Button>
                     <Button
                       variant="linkDanger"

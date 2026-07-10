@@ -1,5 +1,5 @@
+import { Lock } from "./components/ui/icons";
 import { useVault } from "./hooks/useVault";
-import Button from "./components/ui/Button";
 import ConnectPage from "./pages/ConnectPage";
 import UnlockPage from "./pages/UnlockPage";
 import VaultPage from "./pages/VaultPage";
@@ -24,9 +24,12 @@ export default function Keyva() {
         <header className="flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight">Keyva</h1>
           {status === "unlocked" && (
-            <Button variant="secondary" size="sm" onClick={lock}>
-              Lock
-            </Button>
+            <button
+              onClick={lock}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-600 transition-colors hover:border-red-300 hover:bg-red-100 hover:text-red-700"
+            >
+              <Lock width={15} height={15} /> Lock
+            </button>
           )}
         </header>
 
