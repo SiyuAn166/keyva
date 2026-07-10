@@ -5,8 +5,18 @@ import UnlockPage from "./pages/UnlockPage";
 import VaultPage from "./pages/VaultPage";
 
 export default function Keyva() {
-  const { status, items, error, busy, connect, unlock, upsert, remove, lock } =
-    useVault();
+  const {
+    status,
+    items,
+    error,
+    busy,
+    isNewVault,
+    connect,
+    unlock,
+    upsert,
+    remove,
+    lock,
+  } = useVault();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
@@ -32,7 +42,9 @@ export default function Keyva() {
             onConnect={connect}
           />
         )}
-        {status === "connected" && <UnlockPage busy={busy} onUnlock={unlock} />}
+        {status === "connected" && (
+          <UnlockPage busy={busy} isNewVault={isNewVault} onUnlock={unlock} />
+        )}
         {status === "unlocked" && (
           <VaultPage
             items={items}

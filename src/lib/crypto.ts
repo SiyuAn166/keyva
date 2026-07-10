@@ -1,11 +1,35 @@
 import type { Item } from "./types";
+import { argon2id } from "hash-wasm";
 
-const ITERATIONS = 250_000;
-const VERSION = 1;
+// Format version stored in byte 0 of vault.bin:
+//   1 = PBKDF2-SHA256 250k  (legacy, still readable so old vaults keep opening)
+//   2 = Argon2id            (current — memory-hard, what new vaults write)
+export const CURRENT_VERSION = 2;
+
+const PBKDF2_ITERATIONS = 250_000;
 const SALT_LEN = 16;
 const IV_LEN = 12;
+const KEY_LEN = 32;
 
-export async function deriveKey(
+// Argon2id cost. 64 MB keeps a single unlock ~0.5-1s and is safe on mobile
+// Safari; raise ARGON2_MEMORY_KB (e.g. 131072 = 128 MB) for desktop-only use.
+const ARGON2_MEMORY_KB = 65536;
+const ARGON2_ITERATIONS = 3;
+const ARGON2_PARALLELISM = 1;
+
+async function importAesKey(raw: Uint8Array): Promise<CryptoKey> {
+  // Copy into a fresh ArrayBuffer-backed view so the BufferSource type is exact.
+  const bytes = new Uint8Array(raw);
+  return crypto.subtle.importKey(
+    "raw",
+    bytes,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
+}
+
+async function derivePBKDF2(
   password: string,
   salt: Uint8Array<ArrayBuffer>,
 ): Promise<CryptoKey> {
@@ -17,7 +41,7 @@ export async function deriveKey(
     ["deriveKey"],
   );
   return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations: ITERATIONS, hash: "SHA-256" },
+    { name: "PBKDF2", salt, iterations: PBKDF2_ITERATIONS, hash: "SHA-256" },
     base,
     { name: "AES-GCM", length: 256 },
     false,
@@ -25,11 +49,39 @@ export async function deriveKey(
   );
 }
 
+async function deriveArgon2(
+  password: string,
+  salt: Uint8Array<ArrayBuffer>,
+): Promise<CryptoKey> {
+  const raw = await argon2id({
+    password,
+    salt,
+    parallelism: ARGON2_PARALLELISM,
+    iterations: ARGON2_ITERATIONS,
+    memorySize: ARGON2_MEMORY_KB,
+    hashLength: KEY_LEN,
+    outputType: "binary",
+  });
+  return importAesKey(raw);
+}
+
+// Version-aware: opens legacy PBKDF2 vaults, derives Argon2id for current ones.
+export async function deriveKey(
+  password: string,
+  salt: Uint8Array<ArrayBuffer>,
+  version: number = CURRENT_VERSION,
+): Promise<CryptoKey> {
+  return version >= 2
+    ? deriveArgon2(password, salt)
+    : derivePBKDF2(password, salt);
+}
+
 // Pack into: [version:1][salt:16][iv:12][ciphertext:rest]
 export async function encryptVault(
   key: CryptoKey,
   salt: Uint8Array<ArrayBuffer>,
   items: Item[],
+  version: number = CURRENT_VERSION,
 ): Promise<Uint8Array<ArrayBuffer>> {
   const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
   const ctBuf = await crypto.subtle.encrypt(
@@ -39,7 +91,7 @@ export async function encryptVault(
   );
   const ct = new Uint8Array(ctBuf);
   const out = new Uint8Array(1 + SALT_LEN + IV_LEN + ct.length);
-  out[0] = VERSION;
+  out[0] = version;
   out.set(salt, 1);
   out.set(iv, 1 + SALT_LEN);
   out.set(ct, 1 + SALT_LEN + IV_LEN);

@@ -11,7 +11,8 @@ const sizes: Record<Size, string> = {
 
 const variants: Record<Variant, string> = {
   primary: "bg-slate-900 text-white hover:bg-slate-800 shadow-sm",
-  secondary: "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50",
+  secondary:
+    "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50",
   ghost: "text-slate-600 hover:bg-slate-100",
   link: "text-slate-500 hover:text-indigo-600 hover:bg-indigo-50",
   linkDanger: "text-slate-400 hover:text-red-600 hover:bg-red-50",

@@ -136,7 +136,11 @@ export default function ItemList({
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
-                    <Button variant="link" size="xs" onClick={() => onEdit(item)}>
+                    <Button
+                      variant="link"
+                      size="xs"
+                      onClick={() => onEdit(item)}
+                    >
                       Edit
                     </Button>
                     <Button

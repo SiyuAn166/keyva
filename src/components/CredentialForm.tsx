@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from "react";
 import type { Credential, SecurityQuestion } from "../lib/types";
+import SecurityQuestions from "./SecurityQuestions";
 import Button from "./ui/Button";
 import Field from "./ui/Field";
-import TextInput from "./ui/TextInput";
-import TextArea from "./ui/TextArea";
 import PasswordInput from "./ui/PasswordInput";
-import SecurityQuestions from "./SecurityQuestions";
+import TextArea from "./ui/TextArea";
+import TextInput from "./ui/TextInput";
 
 export default function CredentialForm({
   initial,
@@ -62,7 +62,7 @@ export default function CredentialForm({
           </Field>
           <Field label="Username">
             <TextInput
-              placeholder="e.g. siyu@example.com"
+              placeholder="e.g. john.doe@email.com"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
